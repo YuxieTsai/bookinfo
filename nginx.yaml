@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-nginx
+    app.kubernetes.io/component: test-nginx
+    app.kubernetes.io/instance: test-nginx
+    app.kubernetes.io/part-of: test-nginx
+    app.kubernetes.io/name: nginx-120
+    app.openshift.io/runtime-namespace: test-nginx
+  name: test-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-nginx
+  template:
+    metadata:
+      labels:
+        app: test-nginx
+        deploymentconfig: test-nginx
+    spec:
+      volumes:
+        - name: docroot
+          emptyDir: {}
+      initContainers:
+        - name: init-doc-root
+          image: >-
+            ocp-uat-uay.ocp-uat.test/ubi8/nginx-120:1-44
+          command:
+            - sh
+            - '-c'
+            - >-
+              echo '<html><body>test</body></html>' >
+              /opt/app-root/src/index.html
+          resources: {}
+          volumeMounts:
+            - name: docroot
+              mountPath: /opt/app-root/src
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+      containers:
+        - resources: {}
+          terminationMessagePath: /dev/termination-log
+          name: test-nginx
+          command:
+            - nginx
+            - '-g'
+            - daemon off;
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+            - containerPort: 8443
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: docroot
+              mountPath: /opt/app-root/src
+          terminationMessagePolicy: File
+          image: >-
+            ocp-uat-uay.ocp-uat.test/ubi8/nginx-120:1-44
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
